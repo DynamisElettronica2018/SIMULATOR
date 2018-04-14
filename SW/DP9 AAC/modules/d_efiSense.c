@@ -1,0 +1,50 @@
+//
+// Created by Aaron Russo on 17/07/16.
+//
+
+#include "d_efiSense.h"
+
+unsigned int dEfiSense_ticks = EFI_SENSE_DEADTIME;
+char dEfiSense_dead = TRUE, dEfiSense_detectReset = FALSE;
+
+void dEfiSense_heartbeat(void) {
+    dEfiSense_detectReset = TRUE;
+    dEfiSense_dead = FALSE;
+    dEfiSense_ticks = EFI_SENSE_DEADTIME;
+    dd_Indicator_setBoolValue(EFI_STATUS, !dEfiSense_isDead());
+    dSignalLed_set(DSIGNAL_LED_GREEN);
+}
+
+void dEfiSense_tick(void) {
+    if (dEfiSense_ticks > 0) {
+        dEfiSense_ticks -= 1;
+        if (dEfiSense_ticks == 0) {
+            dEfiSense_die();
+            if (dEfiSense_detectReset) {
+                dHardReset_reset();
+            }
+        }
+    }
+}
+
+void dEfiSense_die(void) {
+    dEfiSense_dead = TRUE;
+    dd_Indicator_setBoolValue(EFI_STATUS, !dEfiSense_isDead());
+    dSignalLed_unset(DSIGNAL_LED_GREEN);
+}
+
+char dEfiSense_isDead(void) {
+    return dEfiSense_dead;
+}
+
+float dEfiSense_calculateTemperature(unsigned int value) { //Value is Temperature, 256 values ranging from -10° to 160°
+    return ((int) ((((value * EFI_SENSE_TEMP_RANGE) / 256.0) - EFI_SENSE_MIN_TEMP) * 100)) / 100.0;
+}
+
+float dEfiSense_calculatePressure(unsigned int value) { //Value is Pressure in millibars
+    return (value / 10) / 100.0;
+}
+
+float dEfiSense_calculateVoltage(unsigned int value) { //Value is Battery Voltage, 1024 values ranging from 0 to 18V
+    return ((int) (((value * EFI_SENSE_MAX_VOLTAGE) / 1024.0) * 100)) / 100.0;
+}
